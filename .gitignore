@@ -1,2 +1,9 @@
-data/*
-env_trus/*
+data/
+env_trus/
+*.pyc
+__pycache__/
+checkpoints/
+*.pth
+*.jpg
+.idea/
+wandb/
