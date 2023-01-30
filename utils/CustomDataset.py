@@ -1,135 +1,98 @@
-import logging
-import numpy as np
+import os
+import cv2
 import torch
+import numpy as np
+import albumentations as albu
+
 from PIL import Image
-from functools import partial
-from multiprocessing import Pool
-from os import listdir
-from os.path import splitext, isfile, join
-from pathlib import Path
-from torch.utils.data import Dataset
-from tqdm import tqdm
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset as BaseDataset
+from sklearn.model_selection import train_test_split
 
-
-def load_image(filename):
+def load_data(test_size: int, batch_size: int, img_size: int, dir: str, artificial_increase: int):
     
-    ext = splitext(filename)[1]
+    images, masks = preprocessing_folder(img_size, dir)
     
-    if ext == '.npy':
-        return Image.fromarray(np.load(filename))
+    images*=artificial_increase
+    masks*=artificial_increase
     
-    elif ext in ['.pt', '.pth']:
-        return Image.fromarray(torch.load(filename).numpy())
+    X_train, X_test, y_train, y_test = train_test_split(images, masks, test_size=test_size, random_state=42)
     
-    else:
-        return Image.open(filename)
-
-
-def unique_mask_values(idx, mask_dir, mask_suffix):
+    train_dataset = Dataset(X_train, y_train, augmentation=get_training_augmentation(img_size))
+    valid_dataset = Dataset(X_test, y_test, False)
     
-    mask_file = list(mask_dir.glob(idx + mask_suffix + '.*'))[0]
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     
-    mask = np.asarray(load_image(mask_file))
+    return train_loader, valid_loader
+
+def get_training_augmentation(IMG_SIZE):
     
-    if mask.ndim == 2:
-        return np.unique(mask)
+    train_transform = [
+        
+        albu.RandomCrop(width = IMG_SIZE, height = IMG_SIZE),
+        albu.RandomRotate90(),
+        albu.Flip(p=0.5),
+#         albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
+    ]
+    return albu.Compose(train_transform)
+
+def preprocessing_folder(IMG_SIZE, dir: str):
     
-    elif mask.ndim == 3:
-        mask = mask.reshape(-1, mask.shape[-1])
-        return np.unique(mask, axis=0)
+    get_folder_dir = os.listdir(dir)
     
-    else:
-        raise ValueError(f'Loaded masks should have 2 or 3 dimensions, found {mask.ndim}')
-
-
-class Dataset(Dataset):
+    name_images = os.listdir(f'{dir}/{get_folder_dir[0]}/')
+    name_masks = os.listdir(f'{dir}/{get_folder_dir[1]}/')
     
-    def __init__(self, images_dir: str, mask_dir: str, scale: float = 1.0, mask_suffix: str = ''):
+    array_images, array_masks = [], []
+    
+    for name_image, name_mask in zip(name_images, name_masks):
+
+        image = cv2.imread(f'{dir}/{get_folder_dir[0]}/{name_image}')
+        image = np.array(Image.fromarray(image).resize((IMG_SIZE, IMG_SIZE))).astype('float32')/255
         
-        self.images_dir = Path(images_dir)
-        self.mask_dir = Path(mask_dir)
+        img = (image - np.mean(image))/np.std(image)
+
+        img_gray = 0.299*img[:,:,0] + 0.587*img[:,:,1] + 0.114*img[:,:,2]
+        img_gray = np.moveaxis(img_gray, -1, 0)
         
-        assert 0 < scale <= 1, 'Scale must be between 0 and 1'
+        mask = cv2.imread(f'{dir}/{get_folder_dir[1]}/{name_mask}')*255
+        mask = np.array(Image.fromarray(mask).resize((IMG_SIZE, IMG_SIZE))).astype('float32')
+        mask = mask.max(axis=2)/255
+
+        array_images.append(img_gray)
+        array_masks.append(mask)
+    
+    return array_images, array_masks
+
+class Dataset(BaseDataset):
+    def __init__(
+            self, 
+            images, 
+            masks, 
+            augmentation=None
+    ):
+        self.images = images
+        self.masks = masks
+        self.augmentation = augmentation
+    
+    def __getitem__(self, i):
+        image = self.images[i]
+        mask = self.masks[i]
+        flag = np.random.rand() > 0.3
         
-        self.scale = scale
-        self.mask_suffix = mask_suffix
-
-        self.ids = [splitext(file)[0] for file in listdir(images_dir) if isfile(join(images_dir, file)) and not file.startswith('.')]
-        if not self.ids:
-            raise RuntimeError(f'No input file found in {images_dir}, make sure you put your images there')
-
-        logging.info(f'Creating dataset with {len(self.ids)} examples')
-        logging.info('Scanning mask files to determine unique values')
+        if self.augmentation:
+            sample = self.augmentation(image=image, mask=mask)
+            image, mask = sample['image'], sample['mask']
+            while mask.sum() == 0 and flag:
+                sample = self.augmentation(image=image, mask=mask)
+                image, mask = sample['image'], sample['mask']
         
-        with Pool() as p:
-            unique = list(tqdm(
-                p.imap(partial(unique_mask_values, mask_dir=self.mask_dir, mask_suffix=self.mask_suffix), self.ids),
-                total=len(self.ids)
-            ))
-
-        self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
-        logging.info(f'Unique mask values: {self.mask_values}')
-
-    def __len__(self):
-        return len(self.ids)
-
-    @staticmethod
-    def preprocess(mask_values, pil_img, scale, is_mask):
         
-        w, h = pil_img.size
-        newW, newH = int(scale * w), int(scale * h)
-        
-        assert newW > 0 and newH > 0, 'Scale is too small, resized images would have no pixel'
-        
-        pil_img = pil_img.resize((newW, newH), resample=Image.NEAREST if is_mask else Image.BICUBIC)
-        img = np.asarray(pil_img)
-
-        if is_mask:
-            mask = np.zeros((newH, newW), dtype=np.int64)
-            
-            for i, v in enumerate(mask_values):
-                
-                if img.ndim == 2:
-                    mask[img == v] = i
-                    
-                else:
-                    mask[(img == v).all(-1)] = i
-
-            return mask
-
-        else:
-            
-            if img.ndim == 2:
-                img = img[np.newaxis, ...]
-                
-            else:
-                img = img.transpose((2, 0, 1))
-
-            if (img > 1).any():
-                img = img / 255.0
-
-            return img
-
-    def __getitem__(self, idx):
-        
-        name = self.ids[idx]
-        
-        mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
-        img_file = list(self.images_dir.glob(name + '.*'))
-
-        assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
-        assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
-        
-        mask = load_image(mask_file[0])
-        img = load_image(img_file[0])
-
-        assert img.size == mask.size, \
-            f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
-
-        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
-        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
-
         return {
-            'image': torch.as_tensor(img.copy()).float().contiguous(),
-            'mask': torch.as_tensor(mask.copy()).long().contiguous()
-        }
+            "image" : torch.tensor(np.array([image]), dtype = torch.float),
+            "mask" : torch.tensor(np.array([mask]), dtype = torch.float)
+            }
+        
+    def __len__(self):
+        return len(self.images)
