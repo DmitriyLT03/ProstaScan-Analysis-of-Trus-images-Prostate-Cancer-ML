@@ -3,6 +3,7 @@ env_trus/
 *.pyc
 __pycache__/
 checkpoints/
+junk
 *.pth
 *.jpg
 .idea/
