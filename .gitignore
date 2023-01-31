@@ -1,9 +1,10 @@
-data/
+
 env_trus/
 *.pyc
 __pycache__/
-checkpoints/
-junk
+
+junk_code
+junk_data
 *.pth
 *.jpg
 .idea/
