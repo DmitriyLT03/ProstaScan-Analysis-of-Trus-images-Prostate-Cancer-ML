@@ -22,7 +22,6 @@ class SegmentationModel(torch.nn.Module):
             )
 
     def forward(self, x):
-        """Sequentially pass `x` trough model`s encoder, decoder and heads"""
 
         self.check_input_shape(x)
 
@@ -39,15 +38,7 @@ class SegmentationModel(torch.nn.Module):
 
     @torch.no_grad()
     def predict(self, x):
-        """Inference method. Switch model to `eval` mode, call `.forward(x)` with `torch.no_grad()`
-
-        Args:
-            x: 4D torch tensor with shape (batch_size, channels, height, width)
-
-        Return:
-            prediction: 4D torch tensor with shape (batch_size, classes, height, width)
-
-        """
+        
         if self.training:
             self.eval()
 
