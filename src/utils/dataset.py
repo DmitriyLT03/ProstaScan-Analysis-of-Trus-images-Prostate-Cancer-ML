@@ -9,61 +9,74 @@ from torch.utils.data import DataLoader
 from torch.utils.data import Dataset as BaseDataset
 from sklearn.model_selection import train_test_split
 
-def load_data(test_size: int, batch_size: int, img_size: int, dir: str, artificial_increase: int):
-    
-    images, masks = preprocessing_folder(img_size, dir)
-    
-    images*=artificial_increase
-    masks*=artificial_increase
-    
-    X_train, X_test, y_train, y_test = train_test_split(images, masks, test_size=test_size, random_state=42)
-    
-    train_dataset = Dataset(X_train, y_train, augmentation=get_training_augmentation(img_size))
-    valid_dataset = Dataset(X_test, y_test, False)
-    
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-    
-    return train_loader, valid_loader
 
-def get_training_augmentation(IMG_SIZE):
-    
-    train_transform = [
+class Preprocessing:
+    def __init__(self, dir: str, img_size: int, augmentation: bool):
+        self.dir = dir
+        self.img_size = img_size
+        self.augmentation = augmentation
         
-        albu.RandomCrop(width = IMG_SIZE, height = IMG_SIZE),
-        albu.RandomRotate90(),
-        albu.Flip(p=0.5),
-#         albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
-    ]
-    return albu.Compose(train_transform)
-
-def preprocessing_folder(IMG_SIZE, dir: str):
+    def get_training_augmentation(self):
+        train_transform = [
+            # albu.GridDistortion(p=0.3),
+            albu.Transpose(p=0.3),
+            albu.HorizontalFlip(p=0.3),
+            albu.VerticalFlip(p=0.4),
+            # albu.Resize(height=self.img_size, width=self.img_size, interpolation=1, always_apply=False, p=1),
+            albu.RandomCrop(width=self.img_size, height=self.img_size),
+            albu.RandomRotate90(p=0.4),
+            albu.Flip(p=0.4),
+            albu.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, always_apply=False, p=0.1)
+            # albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
+        ]
+        return albu.Compose(train_transform)
     
-    get_folder_dir = os.listdir(dir)
+    def load_folder(self):
+        name_images = [item for item in os.listdir(f'{self.dir}/') if item[-8:-4] != "mask"]
+        name_masks = [item for item in os.listdir(f'{self.dir}/') if item[-8:-4] == "mask"]
+        clear_image, clear_mask = [], []
+        for name_image, name_mask in zip(name_images, name_masks):
+            image = cv2.imread(f'{self.dir}/{name_image}')
+            mask = cv2.imread(f'{self.dir}/{name_mask}')*255
+            clear_image.append(image)
+            clear_mask.append(mask)
+        return clear_image, clear_mask
     
-    name_images = os.listdir(f'{dir}/{get_folder_dir[0]}/')
-    name_masks = os.listdir(f'{dir}/{get_folder_dir[1]}/')
+    def prepocessing_image(self, image):
+        image = np.array(Image.fromarray(image).resize((self.img_size, self.img_size))).astype('float32')/255
+        img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        img_gray = (np.rint(img_gray)).astype(int)
+        return img_gray
     
-    array_images, array_masks = [], []
+    def preprocessing_data(self, data, images=True):
+        array = []
+        if images == True:
+            for image in data:
+                image = (cv2.resize(image, (self.img_size, self.img_size), interpolation = cv2.INTER_AREA)).astype('float32')/255
+                # image = (image - np.mean(image))/np.std(image)
+                img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                img_gray = (np.rint(img_gray)).astype(np.uint8)
+                array.append(img_gray)
+        else:
+            for image in data:
+                mask = (cv2.resize(image, (self.img_size, self.img_size), interpolation = cv2.INTER_AREA)).astype('float32')
+                mask = mask.max(axis=2)/255
+                array.append(mask)
+        return array
     
-    for name_image, name_mask in zip(name_images, name_masks):
-
-        image = cv2.imread(f'{dir}/{get_folder_dir[0]}/{name_image}')
-        image = np.array(Image.fromarray(image).resize((IMG_SIZE, IMG_SIZE))).astype('float32')/255
-        
-        img = (image - np.mean(image))/np.std(image)
-
-        img_gray = 0.299*img[:,:,0] + 0.587*img[:,:,1] + 0.114*img[:,:,2]
-        img_gray = np.moveaxis(img_gray, -1, 0)
-        
-        mask = cv2.imread(f'{dir}/{get_folder_dir[1]}/{name_mask}')*255
-        mask = np.array(Image.fromarray(mask).resize((IMG_SIZE, IMG_SIZE))).astype('float32')
-        mask = mask.max(axis=2)/255
-
-        array_images.append(img_gray)
-        array_masks.append(mask)
-    
-    return array_images, array_masks
+    def Generator(self, batch_size, X_train, X_test, y_train, y_test):
+        X_train_prep = self.preprocessing_data(X_train, images=True)
+        X_test_prep = self.preprocessing_data(X_test, images=True)
+        y_train_prep = self.preprocessing_data(y_train, images=False)
+        y_test_prep = self.preprocessing_data(y_test, images=False)
+        if self.augmentation == False:
+            train_dataset = Dataset(X_train_prep, y_train_prep)
+        else:
+            train_dataset = Dataset(X_train_prep, y_train_prep, augmentation=self.get_training_augmentation())
+        valid_dataset = Dataset(X_test_prep, y_test_prep, False)
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+        valid_loader = torch.utils.data.DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+        return train_loader, valid_loader
 
 class Dataset(BaseDataset):
     def __init__(
