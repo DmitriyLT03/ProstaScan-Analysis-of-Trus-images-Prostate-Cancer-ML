@@ -1,4 +1,5 @@
 from . import decoders
+from . import utils
 
 from .decoders.unetplusplus import UnetPlusPlus
 from .decoders.fpn import FPN
