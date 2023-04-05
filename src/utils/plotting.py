@@ -25,10 +25,11 @@ class Visual:
 
     def blue_chanel_predict(image):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        image = cv2.resize(image,
-                           (1280, 872), 
-                           interpolation = cv2.INTER_AREA
-                           )
+        image = cv2.resize(
+            image,
+            (1280, 872), 
+            interpolation = cv2.INTER_AREA
+        )
         blue, _, _ = cv2.split(image)
         zeros = np.zeros(blue.shape, np.uint8)
         blueBGR = cv2.merge([blue,zeros,zeros])

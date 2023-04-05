@@ -16,31 +16,55 @@ class Preprocessing:
         
     def get_training_augmentation(self):
         train_transform = [
-            albu.GridDistortion(p=0.3),
-            # albu.RandomCrop(width = 128, height = 128),
-            # albu.Resize(height=self.img_size, width=self.img_size, interpolation=1, always_apply=True, p=1),
-            albu.Transpose(p=0.1),
-            albu.HorizontalFlip(p=0.1),
-            albu.VerticalFlip(p=0.1),
-            # albu.Resize(height=self.img_size, width=self.img_size, interpolation=1, always_apply=False, p=1),
-            # albu.RandomSizedCrop(min_max_height=(50, 101), height=self.img_size, width=self.img_size, p=0.5),
-            albu.RandomRotate90(p=0.1),
-            albu.Flip(p=0.1),
-            # albu.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.2, hue=0.2, always_apply=False, p=0.5),
-            # albu.OneOf([
-            #         albu.RandomSizedCrop(min_max_height=(500, 600), height=self.img_size, width=self.img_size, p=0.5),
-            #         albu.PadIfNeeded(min_height=128, min_width=128, p=0.5)
-            #     ], p=1),    
-            # albu.OneOf([
-            #     albu.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03, p=0.5),
-            #     albu.GridDistortion(p=0.5),
-            #     albu.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)                  
-            #     ], p=0.8),
-            # albu.CLAHE(p=0.8),
-            # albu.RandomBrightnessContrast(p=0.8),    
-            # albu.RandomGamma(p=0.8)
-            ]
-            # albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
+            albu.OneOf([
+                    albu.CropNonEmptyMaskIfExists(
+                        height=256, 
+                        width=256, 
+                        ignore_values=None, 
+                        ignore_channels=None, 
+                        always_apply=False,
+                        p=1.0
+                    ),
+                    albu.PadIfNeeded(
+                        min_height=128,
+                        min_width=128,
+                        p=0.5
+                    )
+                ], p=1),
+            albu.OneOf([
+                albu.ElasticTransform(
+                    alpha=120, 
+                    sigma=120 * 0.05, 
+                    alpha_affine=120 * 0.03,
+                    p=0.5
+                ),
+                albu.GridDistortion(p=0.5),
+                albu.OpticalDistortion(
+                    distort_limit=2,
+                    shift_limit=0.5, 
+                    p=1
+                )                  
+                ], p=0.8),
+            albu.GridDistortion(p=0.4),
+            albu.Transpose(p=0.4),
+            albu.HorizontalFlip(p=0.4),
+            albu.VerticalFlip(p=0.4),
+            albu.RandomRotate90(p=0.4),
+            albu.Flip(p=0.4),
+            albu.ColorJitter(
+                brightness=0.5, 
+                contrast=0.5,
+                saturation=0.2, 
+                hue=0.2,
+                always_apply=False, 
+                p=0.5
+            ),
+            albu.RandomBrightnessContrast(p=0.4),    
+            albu.RandomGamma(p=0.4),
+            albu.Resize(
+                height=256,
+                width=256
+            )]
         return albu.Compose(train_transform)
     
     def load_folder(self):
@@ -170,13 +194,18 @@ class Dataset(BaseDataset):
                 mask=mask
             )
             image, mask = sample['image'], sample['mask']
-            while mask.sum() == 0 and flag:
-                sample = self.augmentation(
-                    image=image, 
-                    mask=mask
-                )
-                image, mask = sample['image'], sample['mask']
-        
+            # while mask.sum() == 0 and flag:
+            #     sample = self.augmentation(
+            #         image=image, 
+            #         mask=mask
+            #     )
+            #     image, mask = sample['image'], sample['mask']
+            
+            sample = self.augmentation(
+                image=image, 
+                mask=mask
+            )
+            image, mask = sample['image'], sample['mask']
         
         return {
             "image" : torch.tensor(np.array([image]), dtype = torch.float),
