@@ -17,7 +17,9 @@ junk_data
 train_predict_v1
 valid_predict_v1
 valid_predict_kfold_v1
+Cancer-5/
 
 wandb/
+cancer_research-dima/
 
 ONNX/
