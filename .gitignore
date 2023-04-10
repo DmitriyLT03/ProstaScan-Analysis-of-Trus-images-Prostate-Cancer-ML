@@ -1,6 +1,7 @@
 *.pyc
 *.pth
 *.jpg
+*.png
 .idea/
 __pycache__/
 .vscode/
@@ -9,6 +10,12 @@ data/
 data_png/
 
 env_trus/
+
+inference_API/
+inference_script/
+
+inference/model/FPN_trained.ONNX
+inference/model/UNET++_trained.ONNX
 
 example_data/
 junk_code
