@@ -74,7 +74,7 @@ def main():
             process_image(NeuralNetwork, input_image, output_image)
         print()
     else:
-        raise RuntimeError("Dolbaeb?")
+        raise RuntimeError("Error")
 
 
 if __name__ == "__main__":
