@@ -33,7 +33,7 @@ class Dataset(BaseDataset):
         return {
             "image" : torch.tensor(np.array(image), dtype = torch.float),
             "mask" : torch.tensor(np.array([mask]), dtype = torch.float)
-            }
+        }
         
     def __len__(self):
         return len(self.images)
@@ -180,7 +180,18 @@ class Preprocessing:
                 f'{self.dir}/{name_mask}'
             )*255
             image = image[135:750, 145:1125]
+            image = cv2.resize(
+                image,
+                (980, 615),
+                interpolation = cv2.INTER_AREA
+            )
             mask = mask[135:750, 145:1125]
+            mask = cv2.resize(
+                mask,
+                (980, 615),
+                interpolation = cv2.INTER_AREA
+            )
+            mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
             clear_image.append(image)
             clear_mask.append(mask)
         return clear_image, clear_mask
@@ -189,13 +200,13 @@ class Preprocessing:
         # normalizator = self.Normalize()
         # image = normalizator(image=image)['image']
         b, g, r = cv2.split(image)
-        image_3d = cv2.merge([b, g, r])
-        image_3d = (255 - image_3d)
-        image = (cv2.resize(
-            image_3d, 
+        image = cv2.merge([b, g, r])
+        # image_3d = (255 - image_3d)
+        resize_image = (cv2.resize(
+            image, 
             (self.img_size, self.img_size),
             interpolation = cv2.INTER_AREA)
-        ).astype('float32')/255
+        ).astype('float32')
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # image = cv2.GaussianBlur(image,(3,3),cv2.BORDER_DEFAULT)
         image = anisodiff2D().fit(img=image)
@@ -216,8 +227,7 @@ class Preprocessing:
                     (self.img_size, self.img_size),
                     interpolation = cv2.INTER_AREA)
                 ).astype('float32')
-                
-                mask = mask.max(axis=2)/255
+                mask = mask/255
                 array.append(mask)
         return array
     
@@ -258,9 +268,9 @@ class Preprocessing:
             #     ], p=0.8),
             # albu.GridDistortion(p=0.1),
             # albu.Transpose(p=0.4),
-            # albu.HorizontalFlip(p=0.15),
-            # albu.VerticalFlip(p=0.1),
-            # albu.RandomRotate90(p=0.15),
+            albu.HorizontalFlip(p=0.15),
+            albu.VerticalFlip(p=0.1),
+            albu.RandomRotate90(p=0.15),
             # albu.Flip(p=0.14),
             # albu.ColorJitter(
             #     brightness=0.5, 
