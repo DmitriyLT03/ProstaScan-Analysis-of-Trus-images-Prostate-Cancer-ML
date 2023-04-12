@@ -6,7 +6,11 @@ from PIL import Image
 
 class Segmentator:
     def __init__(self, path_model: str):
-        self.model = ort.InferenceSession(path_model)
+        self.model = ort.InferenceSession(
+            path_model,
+            providers=['CPUExecutionProvider'],
+            provider_options=[{"device_id": 0, "gpu_mem_limit": 7 * 1024 * 1024 * 1024}]
+        )
         self.input_resize = (768, 768)
         self.output_resize = (980, 615)
 
@@ -40,7 +44,7 @@ class Segmentator:
         ).astype('float32')
         image = np.moveaxis(image, -1, 0)
         return np.array([image])
-
+    
     def preproc_output(self, output):
         predict = (output[0][0][0]*255).astype(np.uint8)
         predict = cv2.resize(
