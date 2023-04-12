@@ -150,5 +150,6 @@ class Application:
 
 if __name__=="__main__":
     print("Start work")
+    print("Based")
     app = Application(Path('./model.pth').absolute().as_posix())
     app.main()
