@@ -19,7 +19,7 @@ def process_image(nn: Segmentator, input_image: Path, output_image: Path):
 def main():
     m = argparse.ArgumentParser()
     m.add_argument("--model", "-m", type=Path,
-                   default='../model/UNET++_trained.onnx',
+                   default='../model/best_model_3fold.pth',
                    help="Путь до модели ONNX"
                    )
     m.add_argument("--input-image", "-ii", type=Path,
@@ -74,7 +74,7 @@ def main():
             process_image(NeuralNetwork, input_image, output_image)
         print()
     else:
-        raise RuntimeError("Dolbaeb?")
+        raise RuntimeError("Error")
 
 
 if __name__ == "__main__":

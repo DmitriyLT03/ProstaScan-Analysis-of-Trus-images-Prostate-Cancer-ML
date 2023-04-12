@@ -17,6 +17,13 @@ inference_script/
 inference/model/FPN_trained.ONNX
 inference/model/UNET++_trained.ONNX
 
+
+inference_ONNX/model/UNET++_trained.ONNX
+inference_ONNX/model/FPN_trained.ONNX
+
+
+inference_PyTorch/model/UNET++_trained.ONNX
+
 example_data/
 junk_code
 junk_data
