@@ -149,5 +149,6 @@ class Application:
         root.mainloop()       
 
 if __name__=="__main__":
+    print("Start work")
     app = Application(Path('./model.pth').absolute().as_posix())
     app.main()
