@@ -1,28 +1,19 @@
 import cv2
 import numpy as np
-import torch
-import src
+import onnxruntime as ort
 from PIL import Image
-ENCODER = 'resnet152'
-ENCODER_WEIGHTS = 'imagenet'
-ACTIVATION = 'sigmoid'
+
 
 class Segmentator:
     def __init__(self, path_model: str):
-        self.model = src.UnetPlusPlus(
-            encoder_name='resnet152',
-            encoder_weights='imagenet',
-            in_channels=3,
-            classes=1,
-            activation= 'sigmoid')
-        checkpoint = torch.load(path_model)
-        self.device = ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.model.to(self.device)
-        
+        self.model = ort.InferenceSession(
+            path_model,
+            providers=['CPUExecutionProvider'],
+            provider_options=[{"device_id": 0, "gpu_mem_limit": 7 * 1024 * 1024 * 1024}]
+        )
         self.input_resize = (768, 768)
         self.output_resize = (980, 615)
-        print('ok')
+
     def predict(self, image):
         image = cv2.resize(
             image,
@@ -31,13 +22,14 @@ class Segmentator:
         )
         image = image[135:750, 145:1125]
         preprocessed_image = self.preproc_input(image)
-        preprocessed_image = preprocessed_image.to(self.device)
-        with torch.no_grad():
-            outputs = self.model.forward(preprocessed_image)
+        outputs = self.model.run(
+            None,
+            {"actual_input_1": preprocessed_image},
+        )
         return cv2.addWeighted(
             image,
             1,
-            self.preproc_output(outputs.cpu().detach().numpy()),
+            self.preproc_output(outputs),
             0.6,
             0
         )
@@ -50,12 +42,11 @@ class Segmentator:
             self.input_resize,
             interpolation=cv2.INTER_AREA
         ).astype('float32')
-        image = (np.rint(image)).astype(np.uint8)
         image = np.moveaxis(image, -1, 0)
-        return torch.tensor(np.array([image]), dtype = torch.float)
+        return np.array([image])
     
     def preproc_output(self, output):
-        predict = (output[0][0]*255).astype(np.uint8)
+        predict = (output[0][0][0]*255).astype(np.uint8)
         predict = cv2.resize(
             predict,
             (980, 615),
