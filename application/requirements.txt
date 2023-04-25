@@ -1,10 +1,10 @@
 #Visualize
-opencv-contrib-python>=4.7.0.68
-Pillow>=9.4.0
+opencv-contrib-python==4.7.0.68
+Pillow==9.4.0
 
 #Deep Learning
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+onnxruntime
 
 #Application
-tk>=0.1.0
+tk==0.1.0
 pydicom

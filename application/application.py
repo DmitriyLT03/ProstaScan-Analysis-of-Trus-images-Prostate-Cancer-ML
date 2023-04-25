@@ -149,5 +149,5 @@ class Application:
         root.mainloop()       
 
 if __name__=="__main__":
-    app = Application(Path('./model.pth').absolute().as_posix())
+    app = Application(Path('./model.onnx').absolute().as_posix())
     app.main()
