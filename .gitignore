@@ -1,6 +1,7 @@
 *.pyc
 *.pth
 *.jpg
+!image_readme/Prostate_Cancer.jpg
 *.png
 .idea/
 __pycache__/
