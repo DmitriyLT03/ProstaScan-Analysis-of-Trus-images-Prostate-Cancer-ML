@@ -1,5 +1,5 @@
 # АНАЛИЗ ИЗОБРАЖЕНИЙ ТРУЗИ ПРОСТАТЫ С ИСПОЛЬЗОВАНИЕМ МЕТОДОВ МАШИННОГО ОБУЧЕНИЯ
-![](image_readme/Prostate_Cancer.jpg, image_readme/validation.jpg)
+![](image_readme/Prostate_Cancer.jpg)
 ## Содержание
 
 <!--ts-->
@@ -123,7 +123,7 @@
 
 
 ## х. Результаты
-![](image_readme/validation.jpg)
+![Вадидация](image_readme/validation.jpg)
 Метрика IoU:
   * Валидация = 0.44
   * Тест = 0.3
