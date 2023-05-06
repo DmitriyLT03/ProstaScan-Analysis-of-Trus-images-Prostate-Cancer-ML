@@ -18,8 +18,8 @@
 <!--te-->
 
 ## 1. Установка пакетов и зависимостей
-Установить Anaconda по ссылке https://www.anaconda.com/download/
-Создать новое окружение
+Установить Anaconda по ссылке https://www.anaconda.com/download/ <br />
+Создать новое окружение<br />
 Необходимо открыть окно командной строки окружения и ввести туда следующие команды:
 ```bash
   pip install -r requirements.txt
