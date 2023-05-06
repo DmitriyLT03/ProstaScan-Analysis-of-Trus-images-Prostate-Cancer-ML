@@ -2,6 +2,7 @@
 *.pth
 *.jpg
 !image_readme/Prostate_Cancer.jpg
+!image_readme/validation.jpg
 *.png
 .idea/
 __pycache__/
