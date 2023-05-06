@@ -209,7 +209,7 @@ class Preprocessing:
         ).astype('float32')
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         # image = cv2.GaussianBlur(image,(3,3),cv2.BORDER_DEFAULT)
-        image = anisodiff2D().fit(img=image)
+        image = anisodiff2D().fit(img=resize_image)
         # image = (np.rint(resize_image)).astype(np.uint8)
         image = np.moveaxis(image, -1, 0)
         return image
