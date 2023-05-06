@@ -1,5 +1,6 @@
 # АНАЛИЗ ИЗОБРАЖЕНИЙ ТРУЗИ ПРОСТАТЫ С ИСПОЛЬЗОВАНИЕМ МЕТОДОВ МАШИННОГО ОБУЧЕНИЯ
 ![](image_readme/Prostate_Cancer.jpg)
+![](image_readme/validation.jpg)
 ## Содержание
 
 <!--ts-->
